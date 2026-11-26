@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIANO KEREN BUNG</title>
+<style>
+  body{ background:#0f0f0f; color:white; font-family:Arial; text-align:center; margin:0; padding:20px; }
+  h1{ margin:5px; }
+  select{ padding:12px; font-size:18px; border-radius:10px; border:none; background:#ffcc00; font-weight:bold; }
+  #info{ margin:15px; font-size:18px; color:#ffcc00; min-height:25px; }
+  #progress{ width:90%; max-width:600px; height:10px; background:#333; margin:10px auto; border-radius:10px; overflow:hidden; }
+  #bar{ height:100%; width:0%; background:#ffcc00; transition:0.2s; }
+  .piano{ display:flex; justify-content:center; margin-top:20px; user-select:none; }
+  .white{ width:60px; height:220px; background:white; border:2px solid #000; border-radius:0 0 8px 8px; color:black; display:flex; align-items:flex-end; justify-content:center; padding-bottom:10px; font-weight:bold; cursor:pointer; }
+  .white:active, .white.active{ background:#ffcc00; transform:translateY(3px); }
+  .black{ width:40px; height:140px; background:#111; border:2px solid #000; border-radius:0 0 6px 6px; margin-left:-22px; margin-right:-22px; z-index:2; color:white; display:flex; align-items:flex-end; justify-content:center; padding-bottom:10px; cursor:pointer; }
+  .black:active, .black.active{ background:#ffcc00; color:black; }
+  button{ margin-top:20px; padding:10px 20px; border-radius:10px; border:none; background:#222; color:white; font-size:16px; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<h1>🎹 PIANO BUNG</h1>
+<p>Pencet asal aja, lagunya tetep bener!</p>
+
+<select id="menuLagu" onchange="gantiLagu()">
+  <option value="passacaglia">Passacaglia - Handel</option>
+  <option value="furElise">Für Elise - Beethoven</option>
+  <option value="canon">Canon in D - Pachelbel</option>
+  <option value="river">River Flows In You - Yiruma</option>
+</select>
+
+<div id="info">Lagu: Passacaglia | Nada ke: 0</div>
+<div id="progress"><div id="bar"></div></div>
+
+<div class="piano" id="piano"></div>
+
+<button onclick="ulang()">🔁 Ulang Dari Awal</button>
+<button onclick="autoPlay()">▶️ Auto Main Sendiri</button>
+
+<script>
+// INI DATABASE LAGUNYA BUNG
+// Angka = frekuensi nada. Urutannya yang bikin lagu bener.
+const LAGU = {
+  passacaglia: {
+    nama: "Passacaglia",
+    // Pola bass Passacaglia yang ikonik, diulang-ulang
+    notes: [196, 261.63, 329.63, 392, 329.63, 261.63, 196, 246.94, 293.66, 392, 329.63, 293.66, 261.63, 196, 261.63, 329.63],
+    tempo: 0.45
+  },
+  furElise: {
+    nama: "Für Elise",
+    notes: [659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440, 523.25, 659.25, 622.25, 659.25, 622.25, 659.25, 493.88, 587.33, 523.25, 440],
+    tempo: 0.35
+  },
+  canon: {
+    nama: "Canon in D",
+    notes: [293.66, 329.63, 369.99, 392, 440, 392, 369.99, 329.63, 293.66, 329.63, 369.99, 392, 440, 493.88, 587.33, 493.88],
+    tempo: 0.4
+  },
+  river: {
+    nama: "River Flows In You",
+    notes: [440, 493.88, 587.33, 659.25, 587.33, 493.88, 440, 493.88, 440, 392, 440, 493.88, 587.33, 659.25, 587.33],
+    tempo: 0.4
+  }
+};
+
+let laguAktif = "passacaglia";
+let indexNada = 0;
+let audioCtx = null;
+
+function gantiLagu(){
+  laguAktif = document.getElementById("menuLagu").value;
+  indexNada = 0;
+  updateInfo();
+}
+
+function ulang(){
+  indexNada = 0;
+  updateInfo();
+}
+
+function updateInfo(){
+  let lagu = LAGU[laguAktif];
+  document.getElementById("info").innerText = `Lagu: ${lagu.nama} | Nada ke: ${indexNada} / ${lagu.notes.length}`;
+  document.getElementById("bar").style.width = (indexNada / lagu.notes.length * 100) + "%";
+}
+
+// INI KUNCINYA BUNG: PENCET TOMBOL APA AJA, YANG BUNYI TETEP NADA YANG BENER
+function pencetPiano(el){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  let lagu = LAGU[laguAktif];
+
+  // Kalo udah habis, balik ke awal lagi biar loop terus
+  if(indexNada >= lagu.notes.length) indexNada = 0;
+
+  let freq = lagu.notes[indexNada];
+  mainkanNada(freq);
+
+  // Efek visual biar keliatan keren
+  el.classList.add("active");
+  setTimeout(()=> el.classList.remove("active"), 200);
+
+  indexNada++;
+  updateInfo();
+}
+
+function mainkanNada(freq){
+  let osc = audioCtx.createOscillator();
+  let gain = audioCtx.createGain();
+  osc.type = "triangle";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.8);
+
+  // Tambah bass biar Passacaglia berasa megah
+  let osc2 = audioCtx.createOscillator();
+  osc2.type = "sine";
+  osc2.frequency.value = freq / 2;
+  let gain2 = audioCtx.createGain();
+  gain2.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+  osc2.connect(gain2);
+  gain2.connect(audioCtx.destination);
+  osc2.start();
+  osc2.stop(audioCtx.currentTime + 0.8);
+}
+
+// Bikin tuts piano: 7 putih + 5 hitam
+let pianoEl = document.getElementById("piano");
+let pola = ["white","black","white","black","white","white","black","white","black","white","black","white"];
+let namaTuts = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+pola.forEach((tipe,i)=>{
+  let div = document.createElement("div");
+  div.className = tipe;
+  div.innerText = namaTuts[i];
+  div.onclick = ()=> pencetPiano(div);
+  pianoEl.appendChild(div);
+});
+
+function autoPlay(){
+  let lagu = LAGU[laguAktif];
+  indexNada = 0;
+  let i = 0;
+  let interval = setInterval(()=>{
+    if(i >= lagu.notes.length){ clearInterval(interval); return; }
+    mainkanNada(lagu.notes[i]);
+    indexNada = i+1;
+    updateInfo();
+    i++;
+  }, lagu.tempo * 1000);
+}
+
+updateInfo();
+</script>
+</body>
+</html>
